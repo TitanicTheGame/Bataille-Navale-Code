@@ -106,4 +106,3 @@ plateau(Bombes)
 Bombes.bind("<Button-1>",poserBombe)
 #Quit=Button(pbombe,text='Quitter',command = c.quit)
 #Quit.pack(side=BOTTOM)
-
