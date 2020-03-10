@@ -1,0 +1,109 @@
+from tkinter import*
+
+X=200
+Y=200
+
+
+
+#FONCTIONS
+
+def plateau(Canvas):
+    global X,Y
+    x=y=0
+    for i in range(4):
+        x+=X/5
+        y+=Y/5
+        Canvas.create_line(x,0,x,Y,fill='black')
+        Canvas.create_line(0,y,X,y,fill='black')
+
+def poserBombe(evt):
+    x=(evt.x//(X/5)+1)*X/5
+    y=(evt.y//(Y/5)+1)*Y/5
+    Bombes.create_line(x-X/5,y-Y/5,x,y,fill='black')
+    Bombes.create_line(x-X/5,y,x,y-Y/5,fill='black')
+
+def poserbateau(evt):
+    (x1,y1)=Bateaux.coords(B1)
+    (x2,y2)=Bateaux.coords(B2)
+    (x3,y3)=Bateaux.coords(B3)
+    if evt.x>x1-X/10 and evt.x<x1+X/10 and evt.y>y1-Y/5 and evt.y<y1+Y/5:
+        Bateaux.coords(B1,(evt.x,evt.y))
+    elif evt.x>x2-X/10 and evt.x<x2+X/10 and evt.y>y2-Y/5 and evt.y<y2+Y/5:
+        Bateaux.coords(B2,(evt.x,evt.y))
+    elif evt.x>x3-X/10 and evt.x<x3+X/10 and evt.y>y3-Y/5 and evt.y<y3+Y/5:
+        Bateaux.coords(B3,(evt.x,evt.y))
+
+def validerpositions(evt):
+    (x1,y1)=Bateaux.coords(B1)
+    (x2,y2)=Bateaux.coords(B2)
+    (x3,y3)=Bateaux.coords(B3)
+    (X1,Y1)=(round(x1//(X/5))*X/5+X/10,round(y1//(Y/5))*(Y/5))
+    (X2,Y2)=(round(x2//(X/5))*X/5+X/10,round(y2//(Y/5))*(Y/5))
+    (X3,Y3)=(round(x3//(X/5))*X/5+X/10,round(y3//(Y/5))*(Y/5))
+    if X1<=0:
+        X1=X/10
+    if X1>=X:
+        X1=X-X/10
+    if X2<=0:
+        X2=X2/10
+    if X2>=X:
+        X2=X-X/10
+    if X3<=0:
+        X3=X/10
+    if X3>=X:
+        X3=X-X/10
+    if Y1<=0:
+        Y1=Y/5
+    if Y1>=Y:
+        Y1=Y-Y/5
+    if Y2<=0:
+        Y2=Y2/5
+    if Y2>=Y:
+        Y2=Y-Y/5
+    if Y3<=0:
+        Y3=Y/5
+    if Y3>=Y:
+        Y3=Y-Y/5
+    Bateaux.coords(B1,(X1,Y1))
+    Bateaux.coords(B2,(X2,Y2))
+    Bateaux.coords(B3,(X3,Y3))
+   
+
+#CARTE BATEAU
+
+pbateau=Tk()
+pbateau.title('Bateaux')
+Bateaux=Canvas(pbateau,width=X, height = Y,bg='white')
+Bateaux.pack()
+
+Bateaux.bind("<B1-Motion>",poserbateau)
+Bateaux.bind("<ButtonRelease-1>",validerpositions)
+#Quit=Button(pbateau,text='Quitter',command = c.quit)
+#Quit.pack(side=BOTTOM)
+
+fond=PhotoImage(file='fondmer.gif')
+Bateaux.create_image(50,50,image=fond)
+bateau=PhotoImage(file='bateau.gif')
+B1=Bateaux.create_image(X/10,Y/5,image=bateau)
+B2=Bateaux.create_image(3*X/10,Y/5,image=bateau)
+B3=Bateaux.create_image(5*X/10,Y/5,image=bateau)
+
+plateau(Bateaux)
+
+#Valider.pack(side=BOTTOM)
+
+#CARTE BOMBE
+
+pbombe=Tk()
+pbombe.title('Bombes')
+Bombes=Canvas(pbombe,width=X, height = Y,bg='white')
+Bombes.pack()
+
+plateau(Bombes)
+    
+#POSER BOMBE
+
+Bombes.bind("<Button-1>",poserBombe)
+#Quit=Button(pbombe,text='Quitter',command = c.quit)
+#Quit.pack(side=BOTTOM)
+
