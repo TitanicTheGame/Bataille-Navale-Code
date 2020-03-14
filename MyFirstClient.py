@@ -258,14 +258,14 @@ Bateaux.bind("<B1-Motion>",poserbateau)
 Bateaux.bind("<ButtonRelease-1>",validerpositions)
 Bateaux.bind('<Double-Button-1>',tournerbateau)
 
-img=Image.open('/Users/theogomichon/Desktop/CPBx/Semestre4/Info/ProjetJeuBataillenavale/bateau.png') #L'image de départ doit être verticale
+img=Image.open('bateau.png') #L'image de départ doit être verticale
 img=img.resize((X//5,2*Y//5))
 img2=tournerimage(img)
-img3=Image.open('/Users/theogomichon/Desktop/CPBx/Semestre4/Info/ProjetJeuBataillenavale/explosion.png')
+img3=Image.open('explosion.png')
 img3=img3.resize((X//5,Y//5))
 bateauv=ImageTk.PhotoImage(img)
 bateauh=ImageTk.PhotoImage(img2)
-fond=PhotoImage(file='/Users/theogomichon/Desktop/CPBx/Semestre4/Info/ProjetJeuBataillenavale/fondmer.png')
+fond=PhotoImage(file='fondmer.png')
 explosion=ImageTk.PhotoImage(img3)
 Bateaux.create_image(X//2,Y//2,image=fond)
 B1=Bateaux.create_image(X/10,Y/5,image=bateauv)
