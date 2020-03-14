@@ -166,7 +166,7 @@ plateau(Bateaux)
 
 #CARTE BOMBE
 
-Bombes=Canvas(pbombe,width=X, height = Y,bg='white')
+Bombes=Canvas(Plateau,width=X, height = Y,bg='white')
 Bombes.pack(side=RIGHT)
 
 plateau(Bombes)
