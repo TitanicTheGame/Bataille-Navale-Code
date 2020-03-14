@@ -1,8 +1,7 @@
 from tkinter import*
 from PIL import Image, ImageTk
 
-X=200
-Y=200
+X=Y=300
 
 SensBateaux={'B1':'vertical','B2':'vertical','B3':'vertical'}  #Dictionnaire contenant l'information du sens des bateaux
 
@@ -34,7 +33,7 @@ def poserbateau(evt):
     elif evt.x>x3-X/10 and evt.x<x3+X/10 and evt.y>y3-Y/5 and evt.y<y3+Y/5:
         Bateaux.coords(B3,(evt.x,evt.y))
 
-def validerpositions(evt): #Replace le bateau sur les cases
+def corrigerpositions(evt): #Replace le bateau sur les cases
     (x1,y1)=Bateaux.coords(B1)
     (x2,y2)=Bateaux.coords(B2)
     (x3,y3)=Bateaux.coords(B3)
@@ -58,7 +57,7 @@ def validerpositions(evt): #Replace le bateau sur les cases
     Bateaux.coords(B3,(X3,Y3))
    
    
-def validerpositions2(x,y,B): #Regarde si le bateau ne dépasse pas du cadre
+def corrigerpositions2(x,y,B): #Regarde si le bateau ne dépasse pas du cadre
     if SensBateaux[B]=='vertical':
         if x<=0:
             x=X/10
@@ -79,7 +78,7 @@ def validerpositions2(x,y,B): #Regarde si le bateau ne dépasse pas du cadre
             y=Y-Y/10
     return(x,y)
 
-def tournerbateau(evt): #Tourne le bateau de 90°
+def tournerbateau(evt): #Tourne le bateau de 90° #Penser à différencier cas horizontal et vertical
     (x1,y1)=Bateaux.coords(B1)
     (x2,y2)=Bateaux.coords(B2)
     (x3,y3)=Bateaux.coords(B3)
@@ -129,25 +128,35 @@ def tournerimage(img): #Tourne une image à 90°
     img=img.rotate(90)
     img=img.resize((Y,X))
     return(img)
+
+def valider():
+    L=[]
+    L.append(Bateaux.coords(B1))
+    L.append(Bateaux.coords(B2))
+    L.append(Bateaux.coords(B3))
+    Bateaux.unbind("<B1-Motion>")
+    Bombes.bind("<Button-1>",poserBombe)
+    Valider.destroy()
    
 
 #CARTE BATEAU
 
-pbateau=Tk()
-pbateau.title('Bateaux')
-Bateaux=Canvas(pbateau,width=X, height = Y,bg='white')
-Bateaux.pack()
+Plateau=Tk()
+Plateau.title('Titanic the game')
+Bateaux=Canvas(Plateau,width=X, height = Y,bg='white')
+Bateaux.pack(side=LEFT)
 
 Bateaux.bind("<B1-Motion>",poserbateau)
-Bateaux.bind("<ButtonRelease-1>",validerpositions)
+Bateaux.bind("<ButtonRelease-1>",corrigerpositions)
 Bateaux.bind('<Double-Button-1>',tournerbateau)
 
 img=Image.open('bateau.png') #L'image de départ doit être verticale
+img=img.resize((X//5,2*Y//5))
 img2=tournerimage(img)
 bateauv=ImageTk.PhotoImage(img)
 bateauh=ImageTk.PhotoImage(img2)
 fond=PhotoImage(file='fondmer.gif')
-Bateaux.create_image(50,50,image=fond)
+Bateaux.create_image(X/2,Y/2,image=fond)
 B1=Bateaux.create_image(X/10,Y/5,image=bateauv)
 B2=Bateaux.create_image(3*X/10,Y/5,image=bateauv)
 B3=Bateaux.create_image(5*X/10,Y/5,image=bateauv)
@@ -157,13 +166,9 @@ plateau(Bateaux)
 
 #CARTE BOMBE
 
-pbombe=Tk()
-pbombe.title('Bombes')
-Bombes=Canvas(pbombe,width=X, height = Y,bg='white')
-Bombes.pack()
+Bombes=Canvas(Plateau,width=X, height = Y,bg='white')
+Bombes.pack(side=RIGHT)
 
 plateau(Bombes)
     
-#POSER BOMBE
-
-Bombes.bind("<Button-1>",poserBombe)
+Plateau.mainloop()
