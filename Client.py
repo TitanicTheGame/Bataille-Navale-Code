@@ -63,8 +63,8 @@ class Client(ConnectionListener):
             Bombes.bind("<Button-1>",poserBombe)
             Valider.destroy()
             Wait.destroy()
-            Bateauxrestants.set("Bateaux restants : {}".format(score))
-            Score=Label(Infos,textvariable=Bateauxrestants)
+            Bateauxrestants.set("Bateaux adverses restants : {}".format(score))
+            Score=Label(INFOS,textvariable=Bateauxrestants)
             Score.pack()
                 
     def Network_BombDropped(self, data):
@@ -80,7 +80,7 @@ class Client(ConnectionListener):
                         BR-=1
                         if BR==0:
                             Score.destroy()
-                            END=Label(Infos,text="Vous avez perdu")
+                            END=Label(INFOS,text="Vous avez perdu")
                             END.pack()
                     else:
                         c.Send({"action":"Touched","touched":"Touché"})
@@ -95,10 +95,10 @@ class Client(ConnectionListener):
             score-=1
             if score==0:
                 Score.destroy()
-                END=Label(Infos,text="Vous avez gagné")
+                END=Label(INFOS,text="Vous avez gagné")
                 END.pack()
-            Bateauxrestants.set("Bateaux restants : {}".format(score))
-		print(data['touched')
+            Bateauxrestants.set("Bateaux adverses restants : {}".format(score))
+        print(data['touched'])
     
     def Network_error(self, data):
         print('error:', data['error'][1])
@@ -245,16 +245,16 @@ def tournerimage(img): #Tourne une image à 90°
 
 def valider():
     global E
-	global Wait, Score
-	Valider.destroy()
+    global Wait, Score
+    Valider.destroy()
     E+=1
     if E==2:
         Bombes.bind("<Button-1>",poserBombe)
-		Bateauxrestants.set("Bateaux restants : {}".format(score))
-        Score=Label(Infos,textvariable=Bateauxrestants)
+        Bateauxrestants.set("Bateaux adverses restants : {}".format(score))
+        Score=Label(INFOS,textvariable=Bateauxrestants)
         Score.pack()
-	else:
-        Wait=Label(Infos,text="En attente de l'adversaire...")
+    else:
+        Wait=Label(INFOS,text="En attente de l'adversaire...")
         Wait.pack()
     Bateaux.unbind("<B1-Motion>")
     (x1,y1)=Bateaux.coords(B1)
@@ -267,11 +267,11 @@ def valider():
 
 def valider2(x,y,B):
     if SensBateaux[B]=='vertical':
-        L.append((x,y-Y/10))
-        L.append((x,y+Y/10))
+        PosBateaux[B].append((x,y-Y/10))
+        PosBateaux[B].append((x,y+Y/10))
     else:
-        L.append((x-X/10,y))
-        L.append((x+X/10,y))
+        PosBateaux[B].append((x-X/10,y))
+        PosBateaux[B].append((x+X/10,y))
         
     
     
@@ -283,10 +283,10 @@ Plateau.title('Titanic the game')
 #INFORMATIONS
 
 Bateauxrestants=StringVar()
-Infos=Frame(Plateau)
+INFOS=Frame(Plateau)
 Valider=Button(Plateau,text='Valider',command=valider) #Valider les positions des bateaux et passer à la phase de jeu
 Valider.pack(side=TOP)
-Infos.pack(side=TOP)
+INFOS.pack(side=TOP)
 
 
 Bateaux=Canvas(Plateau,width=X, height = Y,bg='white')
@@ -318,10 +318,5 @@ Bombes=Canvas(Plateau,width=X, height = Y,bg='white')
 Bombes.pack(side=RIGHT)
 plateau(Bombes)
 
-#POSER BOMBE
-
-
-
 # first loop to say to the server that I exist
 c.Loop()
-
