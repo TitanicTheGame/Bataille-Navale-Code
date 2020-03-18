@@ -23,7 +23,7 @@ class ClientChannel(Channel):
         self._server.SendToOthersB({"bomb": data["bomb"],  "who": self.nickname})
 
     def Network_Touched(self, data):
-        self._server.SendToOthersT({"touched": data["touched"],  "who": self.nickname})
+        self._server.SendToOthersT({"touched": data["touched"], "bomb": data["bomb"], "B":data["B"], "who": self.nickname})
 
     def Network_nickname(self, data):
         self.nickname = data["nickname"]
@@ -59,7 +59,7 @@ class MyServer(Server):
         [p.Send({"action":"BombDropped","bomb": data["bomb"]}) for p in self.players if p.nickname != data["who"]]
 
     def SendToOthersT(self, data):
-        [p.Send({"action":"Touched","touched": data["touched"]}) for p in self.players if p.nickname != data["who"]]
+        [p.Send({"action":"Touched","touched": data["touched"], "bomb": data["bomb"], "B":data["B"]}) for p in self.players if p.nickname != data["who"]]
 
     def Launch(self):
         while True:
@@ -74,4 +74,3 @@ else:
     host, port = sys.argv[1].split(":")
     s = MyServer(localaddr=(host, int(port)))
     s.Launch()
-
