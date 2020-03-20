@@ -1,8 +1,11 @@
 import sys
 from time import sleep, localtime
+import random
 
 from PodSixNet.Server import Server
 from PodSixNet.Channel import Channel
+
+PlayersReady={}
 
 class ClientChannel(Channel):
     """
@@ -17,8 +20,10 @@ class ClientChannel(Channel):
 
     def Network_ReadyToPlay(self,data):
         self._server.SendToOthersR({"ready": data["ready"], "who":self.nickname})
-
-        
+        PlayersReady[self.nickname]=data["ready"]
+        if len(PlayersReady)==2:
+            self._server.SendToAllP1({"P1":random.randint(1,2)})
+                  
     def Network_BombDropped(self, data):
         self._server.SendToOthersB({"bomb": data["bomb"],  "who": self.nickname})
 
@@ -51,6 +56,11 @@ class MyServer(Server):
     def DelPlayer(self, player):
         print("Deleting Player " + player.nickname + " at "+str(player.addr))
         del self.players[player]
+        if len(PlayersReady)!=0:
+            del PlayersReady[player.nickname]
+
+    def SendToAllP1(self,data):
+        [p.Send({"action":"PlayerNumberOne", "P1": data["P1"],"listPlayers":[p.nickname for p in self.players],"nickname":p.nickname}) for p in self.players]
 
     def SendToOthersR(self, data):
         [p.Send({"action":"ReadyToPlay","ready": data["ready"]}) for p in self.players if p.nickname != data["who"]]
