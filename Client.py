@@ -15,9 +15,23 @@ PosBateaux={'B1':[],'B2':[],'B3':[]} #Liste contenant les positions des bateaux
 BateauxTireur={'B1':[],'B2':[],'B3':[]}
 PosBateauxTouchés={'B1':[],'B2':[],'B3':[]} #Liste contenant les positions des bateaux touchés
 BateauxCoulés={'B1':[],'B2':[],'B3':[]} #Liste contenant les positions des bateaux coulés
+
+ListPoints=[]
+def MakeListPoints():
+    global X
+    x=-X/10
+    for i in range(5):
+        x+=X/5
+        y=-X/10
+        for j in range(5):
+            y+=X/5
+            ListPoints.append((x,y))
+    return ListPoints
+
 E=0 #Etat du jeu : Phase placement ou phase jeu
 score=3 #Nb de bateaux de l'adversaire
 BR=3 #Nb de bateaux restants
+T=0 #Variable d'état sur la main du jeu, 0=Pas moi; 1=Moi
 
 R=5
 
@@ -48,7 +62,7 @@ class Client(ConnectionListener):
         Accueil.geometry("+{}+{}".format(positionRight, positionDown))
         Wallpaper=Canvas(Accueil,width=X,height=Y,bd=0,highlightthickness=0)
         Wallpaper.pack()
-        imgW=Image.open('/Users/quentinblanchet/Documents/Etudes/CPBx2/Semestre 4/Informatique/Bataille Navale/wallpaper.png')
+        imgW=Image.open(chemin + 'wallpaper.png')
         imgW=imgW.resize((X,Y))
         wallpaper=ImageTk.PhotoImage(imgW)
         Wallpaper.create_image(Y,Y//2,image=wallpaper)
@@ -87,20 +101,29 @@ class Client(ConnectionListener):
         exit()
         
     def Network_ReadyToPlay(self,data):
-        global E
+        global E,FVALIDER
         global Score
         E+=1
         if E==2:
             Bombes.bind("<Button-1>",poserBombe)
-            Valider.destroy()
+            FVALIDER.pack_forget()
             Wait.destroy()
             Bateauxrestants.set("Bateaux adverses restants : {}".format(score))
-            Score=Label(INFOS,textvariable=Bateauxrestants)
-            Score.pack()
+            Score=Label(INFOS,textvariable=Bateauxrestants,fg="white")
+            Score.pack(fill='both', expand=True)
+
+    def Network_PlayerNumberOne(self,data):
+        global T,FLIGHT,LIGHT
+        if data["listPlayers"][data["P1"]-1]==data["nickname"]:
+            T=1
+        FLIGHT=Frame(INFOS)#Voyant vert ou rouge en fonction de la main sur le jeu
+        LIGHT=Label(FLIGHT,text="",bg="firebrick")
+        LIGHT.pack(side=BOTTOM,fill='both', expand=True)
+        FLIGHT.pack(side=BOTTOM,fill='both', expand=True)
+        lightTour()
                 
     def Network_BombDropped(self, data):
-        global BR
-        global Score
+        global BR,Score,T,LIGHT
         n=0
         for i in PosBateaux:
             for j in PosBateaux[i]:
@@ -113,8 +136,11 @@ class Client(ConnectionListener):
                         BR-=1
                         if BR==0:
                             Score.destroy()
-                            END=Label(INFOS,text="Vous avez perdu")
-                            END.pack()
+                            LIGHT.destroy()
+                            LIGHT=Label(FLIGHT,text="",bg="firebrick")
+                            LIGHT.pack(side=BOTTOM,fill='both', expand=True)
+                            END=Label(INFOS,text="Vous avez perdu",bg="firebrick",fg="white")
+                            END.pack(side=BOTTOM,fill='both', expand=True)
                     else:
                         c.Send({"action":"Touched","touched":"Touché","bomb":data["bomb"],"B":i})
                     Bateaux.create_image(data["bomb"],image=explosion)
@@ -124,9 +150,11 @@ class Client(ConnectionListener):
             c.Send({"action":"Touched","touched":"Raté","bomb":data["bomb"],"B":"0"})
             Bateaux.create_line(x-X/10,y-Y/10,x+X/10,y+Y/10,fill='firebrick')
             Bateaux.create_line(x-X/10,y+Y/10,x+X/10,y-Y/10,fill='firebrick')
+            T=1
+            lightTour()
         
     def Network_Touched(self, data):
-        global score,BateauxCoulés
+        global score,BateauxCoulés,T,LIGHT
         (x,y)=data["bomb"]
         i=data["B"]
         if data["touched"]=="Coulé":
@@ -135,12 +163,18 @@ class Client(ConnectionListener):
             score-=1
             if score==0:
                 Score.destroy()
-                END=Label(INFOS,text="Vous avez gagné")
-                END.pack()
+                LIGHT.destroy()
+                LIGHT=Label(FLIGHT,text="",bg="green")
+                LIGHT.pack(side=BOTTOM,fill='both', expand=True)
+                END=Label(INFOS,text="Vous avez gagné",bg="green",fg="white")
+                END.pack(side=BOTTOM,fill='both', expand=True)
+                T=0
             Bateauxrestants.set("Bateaux adverses restants : {}".format(score))
         if data['touched']=='Raté':
             Bombes.create_line(x-X/10,y-Y/10,x+X/10,y+Y/10,fill='firebrick')
             Bombes.create_line(x-X/10,y+Y/10,x+X/10,y-Y/10,fill='firebrick')
+            T=0
+            lightTour()
         if data['touched']=='Touché':
             Bombes.create_image(x,y,image=explosion)
             BateauxCoulés[i].append((x,y))
@@ -166,6 +200,19 @@ host, port = sys.argv[1].split(":")
 c = Client(host, int(port))
 
 #FONCTIONS
+
+def lightTour():
+    global T,LIGHT,Score
+    if T==1:
+        LIGHT.destroy()
+        LIGHT=Label(FLIGHT,text="C'est votre tour",bg="green",fg="white")
+        LIGHT.pack(side=BOTTOM,fill='both', expand=True)
+        Score.config(bg="green")
+    if T==0:
+        LIGHT.destroy()
+        LIGHT=Label(FLIGHT,text="Attendez votre tour",bg="firebrick",fg="white")
+        LIGHT.pack(side=BOTTOM,fill='both', expand=True)
+        Score.config(bg="firebrick")
 
 def plateau(Canvas):
     global X,Y
@@ -197,9 +244,16 @@ def afficherBateauCoulé(i):
         Bombes.create_image(BateauxCoulés[i][1][0],BateauxCoulés[i][1][1],image=explosion)
 
 def poserBombe(evt):
+    global T,ListPoints
+    n=0
     x=evt.x//(X/5)*X/5+X/10
     y=evt.y//(Y/5)*Y/5+Y/10
-    animationMissile(x,y)
+    for i in ListPoints:
+        if i==(x,y):
+            n=1
+    if T==1 and n==1:
+        animationMissile(x,y)
+        ListPoints.remove((x,y))
 
 def poserbateau(evt):
     (x1,y1)=Bateaux.coords(B1)
@@ -309,20 +363,22 @@ def tournerimage(img): #Tourne une image à 90°
     return(img)
 
 def valider():
-    global E
-    global Wait, Score
+    global E,FVALIDER
+    global Wait,Score,Quit
     Valider.destroy()
     TextValider.destroy()
-    FVALIDER.destroy()
+    FVALIDER.pack_forget()
     E+=1
     if E==2:
         Bombes.bind("<Button-1>",poserBombe)
         Bateauxrestants.set("Bateaux adverses restants : {}".format(score))
-        Score=Label(INFOS,textvariable=Bateauxrestants)
-        Score.pack()
+        Score=Label(INFOS,textvariable=Bateauxrestants,fg="white")
+        Score.pack(fill='both', expand=True)
     else:
-        Wait=Label(INFOS,text="En attente de l'adversaire...")
-        Wait.pack()
+        FVALIDER=Frame(INFOS)
+        Wait=Label(FVALIDER,text="En attente de l'adversaire...",bg="gold",fg="white")
+        Wait.pack(side=TOP,fill='both', expand=True)
+        FVALIDER.pack(side=TOP,fill='both', expand=True)
     Bateaux.unbind("<B1-Motion>")
     (x1,y1)=Bateaux.coords(B1)
     (x2,y2)=Bateaux.coords(B2)
@@ -395,22 +451,21 @@ positionRight = int(Plateau.winfo_screenwidth()/2-X)  #Positioner la fenetre au 
 positionDown = int(Plateau.winfo_screenheight()/2-Y/2)
 Plateau.geometry("+{}+{}".format(positionRight, positionDown))
 
+MakeListPoints()
+
 #INFORMATIONS
 
 Bateauxrestants=StringVar()
+
 INFOS=Frame(Plateau)
 
-FVALIDER=Frame(INFOS)
-TextValider=Label(FVALIDER,text="Placez vos bateaux, puis valider")
-TextValider.pack(side=LEFT)
+FVALIDER=Frame(INFOS,bg="gold")
+TextValider=Label(FVALIDER,text="Placez vos bateaux, puis valider",bg="gold",fg="white")
+TextValider.pack()
 Valider=Button(FVALIDER,text='Valider',command=valider) #Valider les positions des bateaux et passer à la phase de jeu
-Valider.pack(side=RIGHT)
-FVALIDER.pack(side=TOP)
+Valider.pack()
+FVALIDER.pack(side=TOP,fill='both', expand=True)
 
-FLIGHT=Frame(INFOS)     #Voyant vert ou rouge en fonction de la main sur le jeu
-LIGHT=Label(FLIGHT,text="Attendez votre tour",bg="firebrick",fg="white")
-LIGHT.pack(side=BOTTOM,fill='both', expand=True)
-FLIGHT.pack(side=BOTTOM,fill='both', expand=True)
 
 INFOS.pack(side=TOP,fill='both', expand=True)
 
@@ -482,7 +537,7 @@ Bateaux.create_line(Y,0,Y,Y,fill='firebrick',width=5)
 Quitter=Frame(Plateau)
 Quit=Button(Quitter,text='Quitter la partie', command=c.quit)
 Quit.pack()
-Quitter.pack(side=BOTTOM)
+Quitter.pack(side=BOTTOM,fill='both', expand=True)
 
 # first loop to say to the server that I exist
 c.Loop()
