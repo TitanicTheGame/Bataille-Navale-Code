@@ -62,7 +62,7 @@ class Client(ConnectionListener):
         Accueil.geometry("+{}+{}".format(positionRight, positionDown))
         Wallpaper=Canvas(Accueil,width=X,height=Y,bd=0,highlightthickness=0)
         Wallpaper.pack()
-        imgW=Image.open('/Users/quentinblanchet/Documents/Etudes/CPBx2/Semestre 4/Informatique/Bataille Navale/wallpaper.png')
+        imgW=Image.open(chemin + 'wallpaper.png')
         imgW=imgW.resize((X,Y))
         wallpaper=ImageTk.PhotoImage(imgW)
         Wallpaper.create_image(Y,Y//2,image=wallpaper)
