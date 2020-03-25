@@ -25,7 +25,7 @@ class ClientChannel(Channel):
             self._server.SendToAllP1({"P1":random.randint(1,2)})
                   
     def Network_BombDropped(self, data):
-        self._server.SendToOthersB({"bomb": data["bomb"],  "who": self.nickname})
+        self._server.SendToOthersB({"bomb": data["bomb"], "screensize": data["screensize"],  "who": self.nickname})
 
     def Network_Touched(self, data):
         self._server.SendToOthersT({"touched": data["touched"], "bomb": data["bomb"], "B":data["B"], "who": self.nickname})
@@ -66,7 +66,7 @@ class MyServer(Server):
         [p.Send({"action":"ReadyToPlay","ready": data["ready"]}) for p in self.players if p.nickname != data["who"]]
         
     def SendToOthersB(self, data):
-        [p.Send({"action":"BombDropped","bomb": data["bomb"]}) for p in self.players if p.nickname != data["who"]]
+        [p.Send({"action":"BombDropped","bomb": data["bomb"],"screensize": data["screensize"]}) for p in self.players if p.nickname != data["who"]]
 
     def SendToOthersT(self, data):
         [p.Send({"action":"Touched","touched": data["touched"], "bomb": data["bomb"], "B":data["B"]}) for p in self.players if p.nickname != data["who"]]
