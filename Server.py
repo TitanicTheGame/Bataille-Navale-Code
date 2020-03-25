@@ -12,11 +12,14 @@ class ClientChannel(Channel):
     This is the server representation of a connected client.
     """
     def __init__(self, *args, **kwargs):
-        self.nickname = "anonymous"
+        self.nickname = ""
         Channel.__init__(self, *args, **kwargs)
     
     def Close(self):
         self._server.DelPlayer(self)
+
+    def Network_ListPlayers(self,data):
+        self.Send({"action":"ListPlayers",'ListPlayers': self._server.ListPlayers()})
 
     def Network_ReadyToPlay(self,data):
         self._server.SendToOthersR({"ready": data["ready"], "who":self.nickname})
@@ -30,10 +33,14 @@ class ClientChannel(Channel):
     def Network_Touched(self, data):
         self._server.SendToOthersT({"touched": data["touched"], "bomb": data["bomb"], "B":data["B"], "who": self.nickname})
 
+    def Network_retry(self,data):
+        self._server.SendToOthersRep({"rep": data["rep"], "who": self.nickname})        
+
     def Network_nickname(self, data):
         self.nickname = data["nickname"]
         self._server.PrintPlayers()
         self.Send({"action":"start"})
+        self.Send({"action":"ListPlayers"})
 
 class MyServer(Server):
     channelClass = ClientChannel
@@ -59,6 +66,9 @@ class MyServer(Server):
         if len(PlayersReady)!=0:
             del PlayersReady[player.nickname]
 
+    def ListPlayers(self):
+        return([p.nickname for p in self.players])
+
     def SendToAllP1(self,data):
         [p.Send({"action":"PlayerNumberOne", "P1": data["P1"],"listPlayers":[p.nickname for p in self.players],"nickname":p.nickname}) for p in self.players]
 
@@ -70,6 +80,9 @@ class MyServer(Server):
 
     def SendToOthersT(self, data):
         [p.Send({"action":"Touched","touched": data["touched"], "bomb": data["bomb"], "B":data["B"]}) for p in self.players if p.nickname != data["who"]]
+
+    def SendToOthersRep(self, data):
+        [p.Send({"action":"retry", "rep" : data["rep"]}) for p in self.players if p.nickname != data["who"]]
 
     def Launch(self):
         while True:
