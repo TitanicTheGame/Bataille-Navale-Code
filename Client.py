@@ -127,7 +127,8 @@ class Client(ConnectionListener):
         n=0
         for i in PosBateaux:
             for j in PosBateaux[i]:
-                if j==data["bomb"]:
+                bomb=[k*(X//data["screensize"]) for k in data["bomb"]]
+                if j==bomb:
                     PosBateaux[i].remove(j)
                     PosBateauxTouchés[i].append(j)
                     if len(PosBateaux[i])==0:
@@ -390,11 +391,11 @@ def valider():
 
 def valider2(x,y,B):
     if SensBateaux[B]=='vertical':
-        PosBateaux[B].append((x,y-Y/10))
-        PosBateaux[B].append((x,y+Y/10))
+        PosBateaux[B].append([x,y-Y/10])
+        PosBateaux[B].append([x,y+Y/10])
     else:
-        PosBateaux[B].append((x-X/10,y))
-        PosBateaux[B].append((x+X/10,y))
+        PosBateaux[B].append([x-X/10,y])
+        PosBateaux[B].append([x+X/10,y])
     BateauxTireur[B].append((x,y))
 
 def bateauProcheMilieu():
@@ -431,7 +432,7 @@ def animationMissile(x2,y2):
             Canvas.delete(M)
             if xf==x2-X:
                 Canvas.delete(M)
-                c.Send({"action":"BombDropped","bomb":(x2-X,y2)})
+                c.Send({"action":"BombDropped","bomb":[x2-X,y2],"screensize":X})
             else:
                 M=Bombes.create_image(0,y0,image=missile)
                 Bombes.image=missile
