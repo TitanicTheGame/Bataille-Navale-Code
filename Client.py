@@ -68,7 +68,7 @@ class Client(ConnectionListener):
         Accueil.geometry("+{}+{}".format(positionRight, positionDown))
         Wallpaper=Canvas(Accueil,width=X,height=Y,bd=0,highlightthickness=0)
         Wallpaper.pack()
-        imgW=Image.open('/Users/quentinblanchet/Documents/Etudes/CPBx2/Semestre 4/Informatique/Bataille Navale/wallpaper.png')
+        imgW=Image.open(chemin+'wallpaper.png')
         imgW=imgW.resize((X,Y))
         wallpaper=ImageTk.PhotoImage(imgW)
         Wallpaper.create_image(Y,Y//2,image=wallpaper)
@@ -130,8 +130,9 @@ class Client(ConnectionListener):
             Valider=Button(FVALIDER,text='Valider',command=valider) #Valider les positions des bateaux et passer à la phase de jeu
             Valider.pack()
             FVALIDER.pack(side=TOP,fill='both', expand=True)
-                
-            Bateaux.bind("<B1-Motion>",poserbateau)
+
+            Bateaux.bind("<Button-1>",prendrebateau)    
+            Bateaux.bind("<B1-Motion>",deplacerbateau)
             Bateaux.bind("<ButtonRelease-1>",corrigerpositions)
             Bateaux.bind('<Double-Button-1>',tournerbateau)
         if len(ListPlayers)>2:
@@ -328,18 +329,25 @@ def poserBombe(evt):
         animationMissile(x,y)
         ListPoints.remove((x,y))
 
-def poserbateau(evt):
+def prendrebateau(evt):
+    global CoordsInit,n
+    CoordsInit={'B1':Bateaux.coords(B1),'B2':Bateaux.coords(B2),'B3':Bateaux.coords(B3)}
     (x1,y1)=Bateaux.coords(B1)
     (x2,y2)=Bateaux.coords(B2)
     (x3,y3)=Bateaux.coords(B3)
     if evt.x>x1-X/10 and evt.x<x1+X/10 and evt.y>y1-Y/5 and evt.y<y1+Y/5:
-        Bateaux.coords(B1,(evt.x,evt.y))
+        n=B1
     elif evt.x>x2-X/10 and evt.x<x2+X/10 and evt.y>y2-Y/5 and evt.y<y2+Y/5:
-        Bateaux.coords(B2,(evt.x,evt.y))
+        n=B2
     elif evt.x>x3-X/10 and evt.x<x3+X/10 and evt.y>y3-Y/5 and evt.y<y3+Y/5:
-        Bateaux.coords(B3,(evt.x,evt.y))
+        n=B3
+
+def deplacerbateau(evt):
+    Bateaux.coords(n,(evt.x,evt.y))
 
 def corrigerpositions(evt): #Replace le bateau sur les cases
+    global n
+    n=0
     (x1,y1)=Bateaux.coords(B1)
     (x2,y2)=Bateaux.coords(B2)
     (x3,y3)=Bateaux.coords(B3)
@@ -355,6 +363,9 @@ def corrigerpositions(evt): #Replace le bateau sur les cases
         (X3,Y3)=(round(x3//(X/5))*X/5+X/10,round(y3//(Y/5))*Y/5)
     elif SensBateaux['B3']=='horizontal':
         (X3,Y3)=(round(x3//(X/5))*X/5,round(y3//(Y/5))*Y/5+Y/10)
+    PosB['B1']=(X1,Y1)
+    PosB['B2']=(X2,Y2)
+    PosB['B3']=(X3,Y3)
     (X1,Y1)=corrigerpositions2(X1,Y1,'B1')
     (X2,Y2)=corrigerpositions2(X2,Y2,'B2')
     (X3,Y3)=corrigerpositions2(X3,Y3,'B3')
@@ -382,7 +393,24 @@ def corrigerpositions2(x,y,B): #Regarde si le bateau ne dépasse pas du cadre
             y=Y/10
         if y>=Y:
             y=Y-Y/10
-    return(x,y)
+    if superposition(B)==True:
+        return(CoordsInit[B])
+    else:
+        return(x,y)
+
+def superposition(B):
+    if SensBateaux[B]=='vertical':
+        (b1,b2)=((PosB[B][0],PosB[B][1]-Y//10),(PosB[B][0],PosB[B][1]+Y/10))
+    else:
+        (b1,b2)=((PosB[B][0]-X//10,PosB[B][1]),(PosB[B][0]+X//10,PosB[B][1]))
+    for i in tuple(x for x in ('B1','B2','B3') if x != B):
+        if SensBateaux[i]=='vertical':
+            (i1,i2)=((PosB[i][0],PosB[i][1]-Y//10),(PosB[i][0],PosB[i][1]+Y/10))
+        else:
+            (i1,i2)=((PosB[i][0]-X//10,PosB[i][1]),(PosB[i][0]+X//10,PosB[i][1]))
+        if b1==i1 or b1==i2 or b2==i1 or b2==i2:
+            return True
+    return False
 
 def tournerbateau(evt): #Tourne le bateau de 90°
     (x1,y1)=Bateaux.coords(B1)
@@ -401,28 +429,37 @@ def tournerbateau(evt): #Tourne le bateau de 90°
 
 def tournerbateau2(x,y,B):
     global B1,B2,B3
+    (b1,b2)=(x+X/10,y+Y/10)
     if SensBateaux[B]=='vertical':
         if B=='B1':
             Bateaux.delete(B1)
-            B1=Bateaux.create_image(x+X/10,y+Y/10,image=bateauh)
+            B1=Bateaux.create_image(b1,b2,image=bateauh)
+            PosB['B1']=(b1,b2)
         if B=='B2':
             Bateaux.delete(B2)
-            B2=Bateaux.create_image(x+X/10,y+Y/10,image=bateauh)
+            B2=Bateaux.create_image(b1,b2,image=bateauh)
+            PosB['B2']=(b1,b2)
         if B=='B3':
             Bateaux.delete(B3)
-            B3=Bateaux.create_image(x+X/10,y+Y/10,image=bateauh)
+            B3=Bateaux.create_image(b1,b2,image=bateauh)
+            PosB['B3']=(b1,b2)
         SensBateaux[B]='horizontal'
     elif SensBateaux[B]=='horizontal':
         if B=='B1':
             Bateaux.delete(B1)
-            B1=Bateaux.create_image(x+X/10,y+Y/10,image=bateauv)
+            B1=Bateaux.create_image(b1,b2,image=bateauv)
+            PosB['B1']=(b1,b2)
         if B=='B2':
             Bateaux.delete(B2)
-            B2=Bateaux.create_image(x+X/10,y+Y/10,image=bateauv)
+            B2=Bateaux.create_image(b1,b2,image=bateauv)
+            PosB['B2']=(b1,b2)
         if B=='B3':
             Bateaux.delete(B3)
-            B3=Bateaux.create_image(x+X/10,y+Y/10,image=bateauv)
+            B3=Bateaux.create_image(b1,b2,image=bateauv)
+            PosB['B3']=(b1,b2)
         SensBateaux[B]='vertical'
+    if superposition(B)==True:
+        tournerbateau2(x,y,B)
     
 def tournerimage(img): #Tourne une image à 90°
     (X,Y)=img.size
@@ -597,6 +634,8 @@ Bateaux.create_image(X/2,Y/2,image=oceanG)
 B1=Bateaux.create_image(X/10,Y/5,image=bateauv)
 B2=Bateaux.create_image(3*X/10,Y/5,image=bateauv)
 B3=Bateaux.create_image(5*X/10,Y/5,image=bateauv)
+
+PosB={'B1':Bateaux.coords(B1),'B2':Bateaux.coords(B2),'B3':Bateaux.coords(B3)}
 
 plateau(Bateaux)
 
