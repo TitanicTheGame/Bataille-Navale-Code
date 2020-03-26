@@ -6,6 +6,7 @@ from PodSixNet.Server import Server
 from PodSixNet.Channel import Channel
 
 PlayersReady={}
+n=0
 
 class ClientChannel(Channel):
     """
@@ -22,10 +23,14 @@ class ClientChannel(Channel):
         self.Send({"action":"ListPlayers",'ListPlayers': self._server.ListPlayers()})
 
     def Network_ReadyToPlay(self,data):
+        global n
+        n+=1
         self._server.SendToOthersR({"ready": data["ready"], "who":self.nickname})
         PlayersReady[self.nickname]=data["ready"]
-        if len(PlayersReady)==2:
+        if len(PlayersReady)==2 and (n==2 or n==6):
             self._server.SendToAllP1({"P1":random.randint(1,2)})
+        if len(PlayersReady)==2 and n==4:
+            self._server.SendToAllP1Bis({"P1":0})
                   
     def Network_BombDropped(self, data):
         self._server.SendToOthersB({"bomb": data["bomb"], "screensize": data["screensize"],  "who": self.nickname})
@@ -41,6 +46,9 @@ class ClientChannel(Channel):
         self._server.PrintPlayers()
         self.Send({"action":"start"})
         self.Send({"action":"ListPlayers"})
+
+    def Network_GameWinner(self, data):
+        print(data['Winner'],"gagne la partie contre",data['Loser'])
 
 class MyServer(Server):
     channelClass = ClientChannel
@@ -61,16 +69,21 @@ class MyServer(Server):
         print("players' nicknames :",[p.nickname for p in self.players])
   
     def DelPlayer(self, player):
+        global n
         print("Deleting Player " + player.nickname + " at "+str(player.addr))
         del self.players[player]
         if len(PlayersReady)!=0:
             del PlayersReady[player.nickname]
+            n=0
 
     def ListPlayers(self):
         return([p.nickname for p in self.players])
 
     def SendToAllP1(self,data):
         [p.Send({"action":"PlayerNumberOne", "P1": data["P1"],"listPlayers":[p.nickname for p in self.players],"nickname":p.nickname}) for p in self.players]
+
+    def SendToAllP1Bis(self,data):
+        [p.Send({"action":"PlayerNumberOneBis","P1": data["P1"]}) for p in self.players]
 
     def SendToOthersR(self, data):
         [p.Send({"action":"ReadyToPlay","ready": data["ready"]}) for p in self.players if p.nickname != data["who"]]
