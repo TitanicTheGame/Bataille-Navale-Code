@@ -203,9 +203,9 @@ class Client(ConnectionListener):
         FinalRanking=ListPlayers
         LenMsgRcd+=1
         if nickname==Hote and Playing!=1:
-            MessagesReceived.append({"msg":("Vous","avez","decidé","de","mettre","fin","au","tounoi"),"fg":"black"})
+            MessagesReceived.append({"msg":("Vous","avez","décidé","de","mettre","fin","au","tounoi"),"fg":"black"})
         else:
-            MessagesReceived.append({"msg":(ListPlayers[0][0],"a","decidé","de","mettre","fin","au","tounoi"),"fg":"black"})
+            MessagesReceived.append({"msg":(Hote,"a","décidé","de","mettre","fin","au","tounoi"),"fg":"black"})
         MessagesReceived.append({"msg":("total","de",ListPlayers[0][1],"points","!"),"fg":"red3"})
         MessagesReceived.append({"msg":("Bravo","à",ListPlayers[0][0],",","notre","vainqueur","avec","un"),"fg":"red3"})   
 
@@ -981,15 +981,22 @@ def Console2Jeu():  #creation fenetre console, salon de jeu
     def StopTournament():
         global MessagesReceived,LiveDisplayClassement,FinalRanking
         n=0
+        m=0
         for i in LiveGame:
             if i["etat"]=="EnCours":
                 n+=1
-        if n==0:
+        for j in range(1,len(ListPlayers)):
+            if ListPlayers[0][1]==ListPlayers[j][1]:
+                m+=1
+        if n==0 and m==0:
             c.Send({"action":"StopTournament"})
             LiveDisplayClassement="no"
             FinalRanking=ListPlayers
-        else:
+        elif n!=0:
             MessagesReceived.append({"msg":"qu'il y a des matchs en cours...","fg":"red2"})
+            MessagesReceived.append({"msg":"Il n'est pas possible d'arrêter le tournoi tant","fg":"red2"})
+        elif m!=0:
+            MessagesReceived.append({"msg":"qu'il y a égalité avec le premier...","fg":"red2"})
             MessagesReceived.append({"msg":"Il n'est pas possible d'arrêter le tournoi tant","fg":"red2"})
 
     def RefreshTabClass():  #rafraichissement des données du classement des joueurs
@@ -1078,6 +1085,7 @@ def Console2Jeu():  #creation fenetre console, salon de jeu
                 label.grid(row=100, column=0,columnspan=4,sticky=S+E+W)                    
             elif PhaseAttenteJoueurs>0:
                 MsgConnPlayers()
+                Hote=ListPlayers[0][0]
                 if len(ListPlayers)==1:
                     label1=Label(CCLASSEMENT, text=(len(ListPlayers),"joueur","(16","max)"))
                 else:
