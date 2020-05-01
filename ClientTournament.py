@@ -61,7 +61,7 @@ class Client(ConnectionListener):
             if nickname!='' and nickname!='Inserez votre pseudo et appuyer sur Entrer':
                 self.nickname=nickname
                 MessagesReceived.append({"msg":("Bonjour",nickname,"et","bienvenue","sur","Titanic","The","Game"),"fg":"black"})
-                connection.Send({"action": "nickname", "nickname": nickname})
+                connection.Send({"action":"nickname", "nickname": nickname})
                 Accueil.destroy()
         self.Connect((host, port))
         self.state=INITIAL
@@ -115,28 +115,30 @@ class Client(ConnectionListener):
         self.state=DEAD
    
     def Network_start(self,data):
+        global Plateau
         self.state=ACTIVE
-        n=0
+        n=-1
         while self.state!=DEAD:   
             Console.update()
+            PlateauStart.update()
             if Playing==1:
                 Plateau.update()
             self.Loop()
+            if n==-1:
+                PlateauStart.destroy()
             if n==100:
                 n=0
                 self.Send({"action":"ListPlayers"})
             n+=1      
             sleep(0.001)
         exit()
-    
+
     def Network_ListPlayers(self,data):
         global INFOS,ETAT,TextAttente,FATTENTE,FVALIDER,Valider,TextValider,nickname,nicknameAdversaire,NbPartiesGagnees
         global ListPlayers,LiveGame,InvitReceived,InvitSended,Playing,ID,frm,LenMsgRcd,LenListP
         ListPlayers=data["ListPlayers"]
         LiveGame=data["LiveGame"]
-        RefreshTabClass()
-        RefreshTabInfos()
-        RefreshTabMatch()
+        RefreshTab()
         for a in InvitReceived:        #creation d'une partie si deux joueurs se sont invoyé une invitation mutuellement
             for b in InvitSended:
                 if a==b:
@@ -817,8 +819,267 @@ def SuppButtonsInvit():
                     nbwordid+=1
                     if nbwordid==5 and MessagesReceived[i]["display"]=="yes":
                         MessagesReceived[i]["display"]="no"
+
+def MsgConnPlayers():   #message de connexion et deconnexion de joueur
+    global MessagesReceived,LenListP,P
+    if len(ListPlayers)!=LenListP and (len(ListPlayers)-LenListP)>0:
+        if (len(ListPlayers)-LenListP)==1:
+            MessagesReceived.append({"msg":(ListPlayers[len(ListPlayers)-1][0],"a","rejoint","le","salon"),"fg":"purple"})
+    elif len(ListPlayers)!=LenListP and (len(ListPlayers)-LenListP)<0:
+        JoueurManquant=list(set(P)-set(ListPlayers))[0][0]
+        if PhaseAttenteJoueurs>0:
+            MessagesReceived.append({"msg":(JoueurManquant,"vient","de","quitter","le","salon"),"fg":"purple"})
+        else:
+            MessagesReceived.append({"msg":(JoueurManquant,"vient","de","se","déconnecter"),"fg":"purple"})
+    P=ListPlayers
+    LenListP=len(ListPlayers)
+    
+def AlreadyInvit(To):
+    global MessagesReceived
+    MessagesReceived.append({"msg":("Vous","avez","déjà","invité",To),"fg":"deeppink"})
+
+def GoInTournament():
+    c.Send({"action":"GoInTournament"})
+
+def StopTournament():
+    global MessagesReceived,LiveDisplayClassement,FinalRanking
+    n=0
+    m=0
+    for i in LiveGame:
+        if i["etat"]=="EnCours":
+            n+=1
+    for j in range(1,len(ListPlayers)):
+        if ListPlayers[0][1]==ListPlayers[j][1]:
+            m+=1
+    if n==0 and m==0:
+        c.Send({"action":"StopTournament"})
+        LiveDisplayClassement="no"
+        FinalRanking=ListPlayers
+    elif n!=0:
+        MessagesReceived.append({"msg":"qu'il y a des matchs en cours...","fg":"red2"})
+        MessagesReceived.append({"msg":"Il n'est pas possible d'arrêter le tournoi tant","fg":"red2"})
+    elif m!=0:
+        MessagesReceived.append({"msg":"qu'il y a égalité avec le premier...","fg":"red2"})
+        MessagesReceived.append({"msg":"Il n'est pas possible d'arrêter le tournoi tant","fg":"red2"})
+
+def IsAnInvit(msg):
+    nbwordid=0
+    for nbword in range(len(msg["msg"])):
+        for ji in InvitReceived:
+            mot=msg["msg"][nbword]
+            if (mot==ji and nbword==0) or (mot=="vous" and nbword==1) or (mot=="a" and nbword==2) or (mot=="envoyé" and nbword==3) or (mot=="une" and nbword==4) or (mot=="invitation" and nbword==5):
+                nbwordid+=1
+                if nbwordid==6 and msg["display"]=="yes":
+                    return True
+    return False
+
+def RefreshTabClass():  #rafraichissement des données du classement des joueurs
+    global Hote
+    rang=1
+    for widget in CCLASSEMENT.winfo_children():
+        widget.destroy()
+
+    if LiveDisplayClassement=="yes":
+        Ranking=ListPlayers
+        textClass="Classement"
+    else:
+        Ranking=FinalRanking
+        textClass="Classement Final"
+
+    cclas=Label(CCLASSEMENT,text=textClass,font='Verdana 14 bold underline')
+    cclas.grid(row=0, column=0,columnspan=4,sticky=E+W)
+
+    cnum=Label(CCLASSEMENT, text="Rang")
+    cnum.grid(row=1, column=0,sticky=E+W)
+
+    cname=Label(CCLASSEMENT, text="Joueurs")
+    cname.grid(row=1, column=1,sticky=E+W)
+
+    cscore=Label(CCLASSEMENT, text="Score")
+    cscore.grid(row=1, column=2,sticky=E+W)
+
+    for i in range(len(Ranking)):
+        g='Verdana 14'
+        if Ranking[i][0]==nickname:
+            g='Verdana 14 bold'
+        if i>0 and Ranking[i][1]==Ranking[i-1][1]:
+            label=Label(CCLASSEMENT, text="-",font=g)
+        elif i==0 or (i>0 and Ranking[i][1]!=Ranking[i-1][1]):
+            label=Label(CCLASSEMENT, text=rang,font=g)
+            rang+=1
+        label.grid(row=i+2, column=0,sticky=E+W)
+
+        label=Label(CCLASSEMENT, text=Ranking[i][0],font=g)
+        label.grid(row=i+2, column=1,sticky=E+W)
+
+        label=Label(CCLASSEMENT, text=Ranking[i][1],font=g)
+        label.grid(row=i+2, column=2,sticky=E+W)
+
+            
+        if PhaseAttenteJoueurs==0:
+            if nickname==Hote:
+                btn=Button(CCLASSEMENT, text="Terminer le tournoi",command=StopTournament)
+                btn.grid(row=100, column=0,columnspan=4,sticky=S+E+W)  
+            for j in range(len(ListPlayers)):
+                if ListPlayers[j][0]==nickname and ListPlayers[i][0]!=nickname and abs(ListPlayers[i][1]-ListPlayers[j][1])<=300:
+                    if len(InvitSended)==0 and len(InvitReceived)==0:
+                        n=0
+                        for a in range(len(LiveGame)):
+                            if (ListPlayers[i][0]==LiveGame[a]["J1"] or ListPlayers[i][0]==LiveGame[a]["J2"]) and LiveGame[a]["etat"]=="EnCours":
+                                button=Button(CCLASSEMENT, text="En jeu")
+                                n+=1
+                        if n==0:
+                            button=Button(CCLASSEMENT, text="Inviter",command=lambda To=ListPlayers[i][0]: SendInvit(To))
+                        button.grid(row=i+2, column=3,sticky=E+W)
+                    else:
+                        n=0
+                        for invitation in InvitReceived:
+                            if invitation==ListPlayers[i][0]:
+                                button=Button(CCLASSEMENT, text="Rejoindre",command=lambda To=ListPlayers[i][0]: SendInvit(To))
+                                n+=1
+                        for playersinvited in InvitSended:
+                            if playersinvited==ListPlayers[i][0]:
+                                button=Button(CCLASSEMENT, text="Invité",command=lambda To=ListPlayers[i][0]: AlreadyInvit(To))
+                                n+=1
+                        for a in range(len(LiveGame)):
+                            if (ListPlayers[i][0]==LiveGame[a]["J1"] or ListPlayers[i][0]==LiveGame[a]["J2"]) and LiveGame[a]["etat"]=="EnCours":
+                                button=Button(CCLASSEMENT, text="En jeu")
+                                n+=1
+                        if n==0:
+                            button=Button(CCLASSEMENT, text="Inviter",command=lambda To=ListPlayers[i][0]: SendInvit(To))
+                        button.grid(row=i+2, column=3,sticky=E+W)
+                                                            
+
+        elif nickname==ListPlayers[0][0] and len(ListPlayers)>1 and PhaseAttenteJoueurs>0:
+            MsgConnPlayers()
+            Hote=ListPlayers[0][0]
+            label=Label(CCLASSEMENT, text=(len(ListPlayers),"joueurs","(16","max)"))
+            label.grid(row=99, column=0,columnspan=4,sticky=S+E)
+            label=Button(CCLASSEMENT, text="Appuyer pour commencer le tournoi",command=GoInTournament)
+            label.grid(row=100, column=0,columnspan=4,sticky=S+E+W)                    
+        elif PhaseAttenteJoueurs>0:
+            MsgConnPlayers()
+            Hote=ListPlayers[0][0]
+            if len(ListPlayers)==1:
+                label1=Label(CCLASSEMENT, text=(len(ListPlayers),"joueur","(16","max)"))
+            else:
+                label1=Label(CCLASSEMENT, text=(len(ListPlayers),"joueurs","(16","max)"))
+            label1.grid(row=99, column=0,columnspan=4,sticky=S+E)
+
+            if nickname==ListPlayers[0][0]:
+                label=Label(CCLASSEMENT, text="Vous est l'hôte de la partie")
+            else:
+                label=Label(CCLASSEMENT, text=(ListPlayers[0][0],"est","l'hôte","de","la","partie"))
+            label.grid(row=100, column=0,columnspan=4,sticky=S+E+W)
+        MsgConnPlayers()
+
+    Grid.columnconfigure(CCLASSEMENT, 1, weight=1)
+    Grid.rowconfigure(CCLASSEMENT, 99, weight=1000)
+    Grid.rowconfigure(CCLASSEMENT, 100, weight=1)
+
+def RefreshTabInfos():  #rafraichissement des messages, invitations reçues, envoyées, refusées...
+    global LenMsgRcd,frm,buttonValiderInvit,buttonRefuserInvit,frm
+    if len(MessagesReceived)!=LenMsgRcd:
+        LenMsgRcd=len(MessagesReceived)
+        for widget in frm.winfo_children():
+            widget.destroy()
+        for i in range(len(MessagesReceived)-1,-1,-1):
+            if IsAnInvit(MessagesReceived[i])==True:
+                frm2=Frame(frm)
+                message=Label(frm2,text=MessagesReceived[i]["msg"],fg=MessagesReceived[i]["fg"],font="Verdana 13")
+                message.grid(row=len(MessagesReceived)-i, column=0,sticky=E+W)
+                buttonValiderInvit=Button(frm2, text="✅",command=lambda To=MessagesReceived[i]["msg"][0]: SendInvit(To))
+                buttonValiderInvit.grid(row=len(MessagesReceived)-i, column=1,sticky=E+W)
+                buttonRefuserInvit=Button(frm2, text="❌",command=lambda To=MessagesReceived[i]["msg"][0]: RefInvit(To))#,buttonValiderInvit.forget(),buttonRefuserInvit.forget()])
+                buttonRefuserInvit.grid(row=len(MessagesReceived)-i, column=2,sticky=E+W)
+                frm2.grid(row=len(MessagesReceived)-i, column=0,sticky=N+E+W)
+                Grid.columnconfigure(frm2, 0, weight=1)
+            else: 
+                message=Label(frm,text=MessagesReceived[i]["msg"],fg=MessagesReceived[i]["fg"],font="Verdana 13")
+                message.grid(row=len(MessagesReceived)-i, column=0,sticky=N+E+W)
+                                              
+                
+        frm.update()
+        cnv.create_window(0, 0, window=frm, anchor=NW)
+        cnv.configure(scrollregion=cnv.bbox(ALL))
+        Grid.columnconfigure(cnv, 0, weight=1)
+        CINFOS.grid(row=0,column=1,sticky=N+S+E+W)
+        FCONSOLE.grid_columnconfigure(1, minsize=3.4/9*XCJ)
+
+def RefreshTabMatch():  #rafraichissement des scores de tous les matchs en direct
+    n=1
+    for widget in CMATCHLIVE.winfo_children():
+        widget.destroy()
+    label=Label(CMATCHLIVE, text="Matchs en Direct",font="Verdana 14 bold underline")
+    label.grid(row=0, column=0,sticky=E+W)
+    for i in range(len(LiveGame)):
+        if LiveGame[i]["etat"]=="EnCours":
+            label=Label(CMATCHLIVE,text=(LiveGame[i]["J1"],LiveGame[i]["S1"],"-",LiveGame[i]["S2"],LiveGame[i]["J2"]),font="Verdana 15",bd=0,highlightthickness=2,highlightbackground="firebrick")
+            label.grid(row=n,column=0,sticky=E+W)
+            n+=1
+    Grid.columnconfigure(CMATCHLIVE, 0, weight=1)
+
+def RefreshTab():
+    RefreshTabClass()
+    RefreshTabInfos()
+    RefreshTabMatch()
      
 #JEU#############################################
+def InitialisationVarFondBateauxNuages():   #définition de toutes les variable du jeu
+    global repM,repA,REPA,ETAT,score,BR
+    global SensBateaux,PosBateaux,BateauxTireur,PosBateauxTouchés,BateauxCoulés,PosB,ListPoints
+    global Bateaux,Bombes,B1,B2,B3,N1,N2,N3,N4,N5,N6,N7
+    global FQUITTER,Quitter,Plateau
+
+    repM=0
+    repA=0
+    REPA=0
+    score=3
+    BR=3
+        
+    SensBateaux={'B1':'vertical','B2':'vertical','B3':'vertical'}
+    PosBateaux={'B1':[],'B2':[],'B3':[]}
+    BateauxTireur={'B1':[],'B2':[],'B3':[]}
+    PosBateauxTouchés={'B1':[],'B2':[],'B3':[]}
+    BateauxCoulés={'B1':[],'B2':[],'B3':[]}
+    ListPoints=[]
+    MakeListPoints()
+
+    Bateaux.create_image(X/2,X/2,image=oceanG)
+    Bombes.create_image(X/2,X/2,image=oceanD)
+    plateau(Bateaux)
+    plateau(Bombes)
+    Bombes.create_line(0,0,0,X,fill='firebrick',width=5)
+    Bateaux.create_line(X,0,X,X,fill='firebrick',width=5)
+
+    B1=Bateaux.create_image(X/10,X/5,image=bateauv)
+    B2=Bateaux.create_image(3*X/10,X/5,image=bateauv)
+    B3=Bateaux.create_image(5*X/10,X/5,image=bateauv)
+    PosB={'B1':Bateaux.coords(B1),'B2':Bateaux.coords(B2),'B3':Bateaux.coords(B3)}
+
+    N1=Bateaux.create_image(X*0.4,X*0.65,image=nuage1)
+    N2=Bateaux.create_image(X*0.2,X*0.4,image=nuage1)
+    N3=Bateaux.create_image(X*0.8,X*0.75,image=nuage1)
+    N4=Bateaux.create_image(X*0.8,X*0.2,image=nuage1)
+    N5=Bateaux.create_image(X*0.7,X*0.45,image=nuage2)
+    N6=Bateaux.create_image(X//3,X*0.85,image=nuage2)
+    N7=Bateaux.create_image(X*0.3,X*0.15,image=nuage2)
+
+    Bombes.create_image(X*0.4,X*0.65,image=nuage1)
+    Bombes.create_image(X*0.2,X*0.4,image=nuage1)
+    Bombes.create_image(X*0.8,X*0.75,image=nuage1)
+    Bombes.create_image(X*0.8,X*0.2,image=nuage1)
+    Bombes.create_image(X*0.7,X*0.45,image=nuage2)
+    Bombes.create_image(X//3,X*0.85,image=nuage2)
+    Bombes.create_image(X*0.3,X*0.15,image=nuage2)
+
+def Plateau2JeuStart():     #nécéssaier pour démarrer, mais aucune idée de pourquoi il faut cette fonction
+    global PlateauStart,img3
+    PlateauStart=Toplevel()
+    X=int(PlateauStart.winfo_screenwidth()*0.75)//2
+    lC,hC,xC,yC=geoliste(Console.geometry())
+    PlateauStart.geometry('0x0')
+    img3=img3.resize((X//5,X//5))
 
 def Plateau2Jeu():  #creation fenetre d'une partie de jeu
     global X, Plateau,INFOS,P,Bateaux,Bombes,FBOTTOM,ScoreGameWin,FQUITTER,Quitter,Playing,ETAT,GameWin,GameLose
@@ -888,301 +1149,53 @@ def Plateau2Jeu():  #creation fenetre d'une partie de jeu
     FQUITTER.pack(anchor='n')
 
     FBOTTOM.pack(side=BOTTOM,fill='both', expand=True)
-
-    def InitialisationVarFondBateauxNuages():   #définition de toutes les variable du jeu
-        global repM,repA,REPA,ETAT,score,BR
-        global SensBateaux,PosBateaux,BateauxTireur,PosBateauxTouchés,BateauxCoulés,PosB,ListPoints
-        global Bateaux,Bombes,B1,B2,B3,N1,N2,N3,N4,N5,N6,N7
-        global FQUITTER,Quitter,Plateau
-
-        repM=0
-        repA=0
-        REPA=0
-        score=3
-        BR=3
-        
-        SensBateaux={'B1':'vertical','B2':'vertical','B3':'vertical'}
-        PosBateaux={'B1':[],'B2':[],'B3':[]}
-        BateauxTireur={'B1':[],'B2':[],'B3':[]}
-        PosBateauxTouchés={'B1':[],'B2':[],'B3':[]}
-        BateauxCoulés={'B1':[],'B2':[],'B3':[]}
-        ListPoints=[]
-        MakeListPoints()
-
-        Bateaux.create_image(X/2,X/2,image=oceanG)
-        Bombes.create_image(X/2,X/2,image=oceanD)
-        plateau(Bateaux)
-        plateau(Bombes)
-        Bombes.create_line(0,0,0,X,fill='firebrick',width=5)
-        Bateaux.create_line(X,0,X,X,fill='firebrick',width=5)
-
-        B1=Bateaux.create_image(X/10,X/5,image=bateauv)
-        B2=Bateaux.create_image(3*X/10,X/5,image=bateauv)
-        B3=Bateaux.create_image(5*X/10,X/5,image=bateauv)
-        PosB={'B1':Bateaux.coords(B1),'B2':Bateaux.coords(B2),'B3':Bateaux.coords(B3)}
-
-        N1=Bateaux.create_image(X*0.4,X*0.65,image=nuage1)
-        N2=Bateaux.create_image(X*0.2,X*0.4,image=nuage1)
-        N3=Bateaux.create_image(X*0.8,X*0.75,image=nuage1)
-        N4=Bateaux.create_image(X*0.8,X*0.2,image=nuage1)
-        N5=Bateaux.create_image(X*0.7,X*0.45,image=nuage2)
-        N6=Bateaux.create_image(X//3,X*0.85,image=nuage2)
-        N7=Bateaux.create_image(X*0.3,X*0.15,image=nuage2)
-
-        Bombes.create_image(X*0.4,X*0.65,image=nuage1)
-        Bombes.create_image(X*0.2,X*0.4,image=nuage1)
-        Bombes.create_image(X*0.8,X*0.75,image=nuage1)
-        Bombes.create_image(X*0.8,X*0.2,image=nuage1)
-        Bombes.create_image(X*0.7,X*0.45,image=nuage2)
-        Bombes.create_image(X//3,X*0.85,image=nuage2)
-        Bombes.create_image(X*0.3,X*0.15,image=nuage2)
-        
+    
     InitialisationVarFondBateauxNuages()
 
 #CONSOLE#########################################
 def Console2Jeu():  #creation fenetre console, salon de jeu
-    global CCLASSEMENT,LenMsgRcd,frm
+    global Console,FCONSOLE,CCLASSEMENT,CINFOS,CMATCHLIVE,LenMsgRcd,frm,cnv,XCJ,YCJ
     global ListPlayers,nickname,LenListP,P
-    global Console,Playing,RefreshTabClass,RefreshTabInfos,RefreshTabMatch
+    global Playing,RefreshTabClass,RefreshTabInfos,RefreshTabMatch
 
     Console=Tk()
     Console.title('Titanic The Game')
-    X=int(Console.winfo_screenwidth()*0.75)
-    Y=X//2
+    XCJ=int(Console.winfo_screenwidth()*0.75)
+    YCJ=XCJ//2
+    LenListP=-1
+    P=[]
 
     FCONSOLE=Frame(Console,bd=0,highlightthickness=0)
 
     #CLASSEMENT
-    CCLASSEMENT=Frame(FCONSOLE,width=2.8/9*X,height=Y,bd=0,highlightthickness=2,highlightbackground="grey")
-    LenListP=-1
-    P=[]
-
-    def MsgConnPlayers():   #message de connexion et deconnexion de joueur
-        global MessagesReceived,LenListP,P
-        if len(ListPlayers)!=LenListP and (len(ListPlayers)-LenListP)>0:
-            if (len(ListPlayers)-LenListP)==1:
-                MessagesReceived.append({"msg":(ListPlayers[len(ListPlayers)-1][0],"a","rejoint","le","salon"),"fg":"purple"})
-        elif len(ListPlayers)!=LenListP and (len(ListPlayers)-LenListP)<0:
-            JoueurManquant=list(set(P)-set(ListPlayers))[0][0]
-            if PhaseAttenteJoueurs>0:
-                MessagesReceived.append({"msg":(JoueurManquant,"vient","de","quitter","le","salon"),"fg":"purple"})
-            else:
-                MessagesReceived.append({"msg":(JoueurManquant,"vient","de","se","déconnecter"),"fg":"purple"})
-        P=ListPlayers
-        LenListP=len(ListPlayers)
-
-    def AlreadyInvit(To):
-        global MessagesReceived
-        MessagesReceived.append({"msg":("Vous","avez","déjà","invité",To),"fg":"deeppink"})
-
-    def GoInTournament():
-        c.Send({"action":"GoInTournament"})
-
-    def StopTournament():
-        global MessagesReceived,LiveDisplayClassement,FinalRanking
-        n=0
-        m=0
-        for i in LiveGame:
-            if i["etat"]=="EnCours":
-                n+=1
-        for j in range(1,len(ListPlayers)):
-            if ListPlayers[0][1]==ListPlayers[j][1]:
-                m+=1
-        if n==0 and m==0:
-            c.Send({"action":"StopTournament"})
-            LiveDisplayClassement="no"
-            FinalRanking=ListPlayers
-        elif n!=0:
-            MessagesReceived.append({"msg":"qu'il y a des matchs en cours...","fg":"red2"})
-            MessagesReceived.append({"msg":"Il n'est pas possible d'arrêter le tournoi tant","fg":"red2"})
-        elif m!=0:
-            MessagesReceived.append({"msg":"qu'il y a égalité avec le premier...","fg":"red2"})
-            MessagesReceived.append({"msg":"Il n'est pas possible d'arrêter le tournoi tant","fg":"red2"})
-
-    def RefreshTabClass():  #rafraichissement des données du classement des joueurs
-        global Hote
-        rang=1
-        for widget in CCLASSEMENT.winfo_children():
-           widget.destroy()
-
-        if LiveDisplayClassement=="yes":
-            Ranking=ListPlayers
-            textClass="Classement"
-        else:
-            Ranking=FinalRanking
-            textClass="Classement Final"
-
-        cclas=Label(CCLASSEMENT,text=textClass,font='Verdana 14 bold underline')
-        cclas.grid(row=0, column=0,columnspan=4,sticky=E+W)
-
-        cnum=Label(CCLASSEMENT, text="Rang")
-        cnum.grid(row=1, column=0,sticky=E+W)
-
-        cname=Label(CCLASSEMENT, text="Joueurs")
-        cname.grid(row=1, column=1,sticky=E+W)
-
-        cscore=Label(CCLASSEMENT, text="Score")
-        cscore.grid(row=1, column=2,sticky=E+W)
-
-        for i in range(len(Ranking)):
-            g='Verdana 14'
-            if Ranking[i][0]==nickname:
-                g='Verdana 14 bold'
-            if i>0 and Ranking[i][1]==Ranking[i-1][1]:
-                label=Label(CCLASSEMENT, text="-",font=g)
-            elif i==0 or (i>0 and Ranking[i][1]!=Ranking[i-1][1]):
-                label=Label(CCLASSEMENT, text=rang,font=g)
-                rang+=1
-            label.grid(row=i+2, column=0,sticky=E+W)
-
-            label=Label(CCLASSEMENT, text=Ranking[i][0],font=g)
-            label.grid(row=i+2, column=1,sticky=E+W)
-
-            label=Label(CCLASSEMENT, text=Ranking[i][1],font=g)
-            label.grid(row=i+2, column=2,sticky=E+W)
-
-            
-            if PhaseAttenteJoueurs==0:
-                if nickname==Hote:
-                    btn=Button(CCLASSEMENT, text="Terminer le tournoi",command=StopTournament)
-                    btn.grid(row=100, column=0,columnspan=4,sticky=S+E+W)  
-                for j in range(len(ListPlayers)):
-                    if ListPlayers[j][0]==nickname and ListPlayers[i][0]!=nickname and abs(ListPlayers[i][1]-ListPlayers[j][1])<=300:
-                        if len(InvitSended)==0 and len(InvitReceived)==0:
-                            n=0
-                            for a in range(len(LiveGame)):
-                                if (ListPlayers[i][0]==LiveGame[a]["J1"] or ListPlayers[i][0]==LiveGame[a]["J2"]) and LiveGame[a]["etat"]=="EnCours":
-                                    button=Button(CCLASSEMENT, text="En jeu")
-                                    n+=1
-                            if n==0:
-                                button=Button(CCLASSEMENT, text="Inviter",command=lambda To=ListPlayers[i][0]: SendInvit(To))
-                            button.grid(row=i+2, column=3,sticky=E+W)
-                        else:
-                            n=0
-                            for invitation in InvitReceived:
-                                if invitation==ListPlayers[i][0]:
-                                    button=Button(CCLASSEMENT, text="Rejoindre",command=lambda To=ListPlayers[i][0]: SendInvit(To))
-                                    n+=1
-                            for playersinvited in InvitSended:
-                                if playersinvited==ListPlayers[i][0]:
-                                    button=Button(CCLASSEMENT, text="Invité",command=lambda To=ListPlayers[i][0]: AlreadyInvit(To))
-                                    n+=1
-                            for a in range(len(LiveGame)):
-                                if (ListPlayers[i][0]==LiveGame[a]["J1"] or ListPlayers[i][0]==LiveGame[a]["J2"]) and LiveGame[a]["etat"]=="EnCours":
-                                    button=Button(CCLASSEMENT, text="En jeu")
-                                    n+=1
-                            if n==0:
-                                button=Button(CCLASSEMENT, text="Inviter",command=lambda To=ListPlayers[i][0]: SendInvit(To))
-                            button.grid(row=i+2, column=3,sticky=E+W)
-                                                            
-
-            elif nickname==ListPlayers[0][0] and len(ListPlayers)>1 and PhaseAttenteJoueurs>0:
-                MsgConnPlayers()
-                Hote=ListPlayers[0][0]
-                label=Label(CCLASSEMENT, text=(len(ListPlayers),"joueurs","(16","max)"))
-                label.grid(row=99, column=0,columnspan=4,sticky=S+E)
-                label=Button(CCLASSEMENT, text="Appuyer pour commencer le tournoi",command=GoInTournament)
-                label.grid(row=100, column=0,columnspan=4,sticky=S+E+W)                    
-            elif PhaseAttenteJoueurs>0:
-                MsgConnPlayers()
-                Hote=ListPlayers[0][0]
-                if len(ListPlayers)==1:
-                    label1=Label(CCLASSEMENT, text=(len(ListPlayers),"joueur","(16","max)"))
-                else:
-                    label1=Label(CCLASSEMENT, text=(len(ListPlayers),"joueurs","(16","max)"))
-                label1.grid(row=99, column=0,columnspan=4,sticky=S+E)
-
-                if nickname==ListPlayers[0][0]:
-                    label=Label(CCLASSEMENT, text="Vous est l'hôte de la partie")
-                else:
-                    label=Label(CCLASSEMENT, text=(ListPlayers[0][0],"est","l'hôte","de","la","partie"))
-                label.grid(row=100, column=0,columnspan=4,sticky=S+E+W)
-            MsgConnPlayers()
-
-
-        Grid.columnconfigure(CCLASSEMENT, 1, weight=1)
-        Grid.rowconfigure(CCLASSEMENT, 99, weight=1000)
-        Grid.rowconfigure(CCLASSEMENT, 100, weight=1)
-
+    CCLASSEMENT=Frame(FCONSOLE,width=2.8/9*XCJ,height=YCJ,bd=0,highlightthickness=2,highlightbackground="grey")
     CCLASSEMENT.grid(row=0,column=0,sticky=N+S+E+W)
-    FCONSOLE.grid_columnconfigure(0, minsize=2.8/9*X)
+    FCONSOLE.grid_columnconfigure(0, minsize=2.8/9*XCJ)
 
     #INFORMATIONS - TCHAT CENTRAL
-    CINFOS=Frame(FCONSOLE,width=3.4/9*X,height=Y,bd=0,highlightthickness=2,highlightbackground="grey")
+    CINFOS=Frame(FCONSOLE,width=3.4/9*XCJ,height=YCJ,bd=0,highlightthickness=2,highlightbackground="grey")
     CINFOS.grid_rowconfigure(0, weight=1)
     CINFOS.grid_columnconfigure(0, weight=1)
     cnv=Canvas(CINFOS)
     cnv.grid(row=0,column=0,sticky=N+S+E+W)
 
-    vScroll = Scrollbar(CINFOS, orient=VERTICAL, command=cnv.yview)
+    vScroll=Scrollbar(CINFOS, orient=VERTICAL, command=cnv.yview)
     vScroll.grid(row=0, column=1, sticky='ns')
 
     cnv.configure(yscrollcommand=vScroll.set)
     frm = Frame(cnv)
 
-    def RefreshTabInfos():  #rafraichissement des messages, invitations reçues, envoyées, refusées...
-        global LenMsgRcd,frm,buttonValiderInvit,buttonRefuserInvit,frm
-        def IsAnInvit(msg):
-            nbwordid=0
-            for nbword in range(len(msg["msg"])):
-                for ji in InvitReceived:
-                    mot=msg["msg"][nbword]
-                    if (mot==ji and nbword==0) or (mot=="vous" and nbword==1) or (mot=="a" and nbword==2) or (mot=="envoyé" and nbword==3) or (mot=="une" and nbword==4) or (mot=="invitation" and nbword==5):
-                        nbwordid+=1
-                        if nbwordid==6 and msg["display"]=="yes":
-                            return True
-            return False
-
-        if len(MessagesReceived)!=LenMsgRcd:
-            LenMsgRcd=len(MessagesReceived)
-            for widget in frm.winfo_children():
-                widget.destroy()
-            for i in range(len(MessagesReceived)-1,-1,-1):
-                if IsAnInvit(MessagesReceived[i])==True:
-                    frm2=Frame(frm)
-                    message=Label(frm2,text=MessagesReceived[i]["msg"],fg=MessagesReceived[i]["fg"],font="Verdana 13")
-                    message.grid(row=len(MessagesReceived)-i, column=0,sticky=E+W)
-                    buttonValiderInvit=Button(frm2, text="✅",command=lambda To=MessagesReceived[i]["msg"][0]: SendInvit(To))
-                    buttonValiderInvit.grid(row=len(MessagesReceived)-i, column=1,sticky=E+W)
-                    buttonRefuserInvit=Button(frm2, text="❌",command=lambda To=MessagesReceived[i]["msg"][0]: RefInvit(To))#,buttonValiderInvit.forget(),buttonRefuserInvit.forget()])
-                    buttonRefuserInvit.grid(row=len(MessagesReceived)-i, column=2,sticky=E+W)
-                    frm2.grid(row=len(MessagesReceived)-i, column=0,sticky=N+E+W)
-                    Grid.columnconfigure(frm2, 0, weight=1)
-                else: 
-                    message=Label(frm,text=MessagesReceived[i]["msg"],fg=MessagesReceived[i]["fg"],font="Verdana 13")
-                    message.grid(row=len(MessagesReceived)-i, column=0,sticky=N+E+W)
-                                              
-                
-            frm.update()
-            cnv.create_window(0, 0, window=frm, anchor=NW)
-            cnv.configure(scrollregion=cnv.bbox(ALL))
-            Grid.columnconfigure(cnv, 0, weight=1)
-            CINFOS.grid(row=0,column=1,sticky=N+S+E+W)
-            FCONSOLE.grid_columnconfigure(1, minsize=3.4/9*X)
-
     CINFOS.grid(row=0,column=1,sticky=N+S+E+W)
-    FCONSOLE.grid_columnconfigure(1, minsize=3.4/9*X)
+    FCONSOLE.grid_columnconfigure(1, minsize=3.4/9*XCJ)
 
     #MATCHS EN LIVE
-    CMATCHLIVE=Frame(FCONSOLE,width=2.8/9*X,height=Y,bd=0,highlightthickness=2,highlightbackground="grey")
-    def RefreshTabMatch():  #rafraichissement des scores de tous les matchs en direct
-        n=1
-        for widget in CMATCHLIVE.winfo_children():
-           widget.destroy()
-        label=Label(CMATCHLIVE, text="Matchs en Direct",font="Verdana 14 bold underline")
-        label.grid(row=0, column=0,sticky=E+W)
-        for i in range(len(LiveGame)):
-            if LiveGame[i]["etat"]=="EnCours":
-                label=Label(CMATCHLIVE,text=(LiveGame[i]["J1"],LiveGame[i]["S1"],"-",LiveGame[i]["S2"],LiveGame[i]["J2"]),font="Verdana 15",bd=0,highlightthickness=2,highlightbackground="firebrick")
-                label.grid(row=n,column=0,sticky=E+W)
-                n+=1
-        Grid.columnconfigure(CMATCHLIVE, 0, weight=1)
+    CMATCHLIVE=Frame(FCONSOLE,width=2.8/9*XCJ,height=YCJ,bd=0,highlightthickness=2,highlightbackground="grey")
         
     CMATCHLIVE.grid(row=0,column=2,sticky=N+S+E+W)
-    FCONSOLE.grid_columnconfigure(2, minsize=2.8/9*X)
-    FCONSOLE.grid_rowconfigure(0, minsize=Y)
+    FCONSOLE.grid_columnconfigure(2, minsize=2.8/9*XCJ)
+    FCONSOLE.grid_rowconfigure(0, minsize=YCJ)
 
-    CQUITTER=Frame(FCONSOLE,width=X,bd=0,highlightthickness=0,bg='grey')
+    CQUITTER=Frame(FCONSOLE,width=XCJ,bd=0,highlightthickness=0,bg='grey')
     Quitter=Label(CQUITTER,text='Quitter le tournoi', bg='grey',fg='white')
     Quitter.pack()
     Quitter.bind("<Button-1>",lambda event: c.quit())
@@ -1191,6 +1204,7 @@ def Console2Jeu():  #creation fenetre console, salon de jeu
     FCONSOLE.pack(expand=True,fill='both')
 
     centrerFenetre(Console,0)
+    Plateau2JeuStart()
 
 Console2Jeu()
 
