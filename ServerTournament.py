@@ -105,7 +105,6 @@ class ClientChannel(Channel):
         self.score=1000
         self._server.PrintPlayers()
         self.Send({"action":"start"})
-        self.Send({"action":"ListPlayers"})
 
     def Network_GameWinner(self, data):
         global LenLP
@@ -137,7 +136,7 @@ class MyServer(Server):
  
     def PrintPlayers(self):
         print("players' nicknames :",[p.nickname for p in self.players])
-  
+
     def DelPlayer(self, player):
         global n,LenLP,MaxPlayer,CreateGame,LiveGame
         print("Deleting Player " + player.nickname + " at "+str(player.addr))
